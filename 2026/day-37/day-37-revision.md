@@ -2,8 +2,6 @@
 
 A short job-ready Docker reference for daily use.
 
----
-
 # Container Commands
 
 | Command | Use |
@@ -29,12 +27,9 @@ A short job-ready Docker reference for daily use.
 | `docker inspect -f '{{.State.Status}}' container_name` | Show container status only |
 | `docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' container_name` | Show container IP address |
 
----
-
 # Image Commands
 
 | Command | Use |
-|---|---|
 | `docker images` | List local images |
 | `docker image ls` | List local images |
 | `docker pull nginx` | Pull image from Docker Hub |
@@ -49,12 +44,9 @@ A short job-ready Docker reference for daily use.
 | `docker rmi image_name` | Remove local image |
 | `docker rmi -f image_name` | Force remove local image |
 
----
-
 # Volume Commands
 
 | Command | Use |
-|---|---|
 | `docker volume create my-volume` | Create named volume |
 | `docker volume ls` | List volumes |
 | `docker volume inspect my-volume` | Inspect volume details |
@@ -64,12 +56,9 @@ A short job-ready Docker reference for daily use.
 | `docker run -v /host/path:/container/path nginx` | Bind mount host folder |
 | `docker run -v $(pwd):/app alpine` | Bind mount current folder |
 
----
-
 # Network Commands
 
 | Command | Use |
-|---|---|
 | `docker network ls` | List Docker networks |
 | `docker network create my-net` | Create custom bridge network |
 | `docker network inspect my-net` | Inspect network details |
@@ -80,12 +69,7 @@ A short job-ready Docker reference for daily use.
 | `docker exec app1 ping app2` | Test name-based communication |
 | `docker exec app1 ping 172.18.0.3` | Test IP-based communication |
 
----
-
 # Docker Compose Commands
-
-| Command | Use |
-|---|---|
 | `docker compose version` | Check Compose version |
 | `docker compose up` | Start services in foreground |
 | `docker compose up -d` | Start services in detached mode |
@@ -105,12 +89,9 @@ A short job-ready Docker reference for daily use.
 | `docker compose -f file.yml up -d` | Run Compose with specific file |
 | `docker compose up -d --scale web=3` | Scale a service to 3 replicas |
 
----
-
 # Cleanup Commands
 
 | Command | Use |
-|---|---|
 | `docker system df` | Show Docker disk usage |
 | `docker container prune` | Remove stopped containers |
 | `docker image prune` | Remove dangling images |
@@ -126,12 +107,9 @@ A short job-ready Docker reference for daily use.
 
 Use cleanup commands carefully, especially commands that remove volumes.
 
----
-
 # Dockerfile Instructions
 
 | Instruction | Use |
-|---|---|
 | `FROM image:tag` | Set base image |
 | `WORKDIR /app` | Set working directory |
 | `COPY source destination` | Copy files from host to image |
@@ -146,22 +124,20 @@ Use cleanup commands carefully, especially commands that remove volumes.
 | `LABEL key=value` | Add metadata |
 | `HEALTHCHECK CMD command` | Add container healthcheck |
 
----
-
 # Dockerfile Examples
 
 ## Basic Dockerfile
 
-```dockerfile
+# dockerfile
 FROM alpine:3.20
 WORKDIR /app
 COPY app.txt .
 CMD ["cat", "app.txt"]
-```
+
 
 ## Python Flask Dockerfile
 
-```dockerfile
+# dockerfile
 FROM python:3.12-slim
 WORKDIR /app
 COPY requirements.txt .
@@ -169,11 +145,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app.py .
 EXPOSE 5000
 CMD ["python", "app.py"]
-```
+
 
 ## Multi-Stage Go Dockerfile
 
-```dockerfile
+# dockerfile
 FROM golang:1.22-alpine AS builder
 WORKDIR /app
 COPY main.go .
@@ -184,11 +160,11 @@ WORKDIR /app
 COPY --from=builder /app/app .
 EXPOSE 8080
 CMD ["./app"]
-```
+
 
 ## Non-Root User Example
 
-```dockerfile
+# dockerfile
 FROM alpine:3.20
 WORKDIR /app
 RUN adduser -D appuser
@@ -196,25 +172,22 @@ COPY app .
 RUN chown appuser:appuser /app/app
 USER appuser
 CMD ["./app"]
-```
-
----
 
 # Docker Compose Examples
 
 ## Nginx Compose
 
-```yaml
+# yaml
 services:
   web:
     image: nginx:alpine
     ports:
       - "8080:80"
-```
+
 
 ## App + Postgres Compose
 
-```yaml
+# yaml
 services:
   app:
     build: ./app
@@ -249,43 +222,31 @@ networks:
 
 volumes:
   db-data:
-```
-
----
 
 # Port Mapping
 
 | Syntax | Meaning |
-|---|---|
 | `-p 8080:80` | Host port 8080 maps to container port 80 |
 | `-p 5000:5000` | Host port 5000 maps to container port 5000 |
 | `ports: ["8080:80"]` | Compose port mapping |
 | `expose: ["5000"]` | Expose port only to internal Docker network |
 
----
-
 # CMD vs ENTRYPOINT
 
 | Feature | CMD | ENTRYPOINT |
-|---|---|---|
 | Purpose | Default command | Fixed executable |
 | Override | Easily overridden | Not easily overridden |
 | Docker run args | Replace CMD | Passed as args |
 | Use case | Default app command | CLI-style container |
 
 Example CMD:
-
-```dockerfile
+# dockerfile
 CMD ["echo", "hello"]
-```
 
 Example ENTRYPOINT:
 
-```dockerfile
+# dockerfile
 ENTRYPOINT ["echo"]
-```
-
----
 
 # Named Volume vs Bind Mount
 
@@ -296,35 +257,27 @@ ENTRYPOINT ["echo"]
 | Best for | Database persistence | Local development |
 | Example | `mysql-data:/var/lib/mysql` | `/root/site:/usr/share/nginx/html` |
 
----
 
 # Default Bridge vs Custom Network
 
 | Feature | Default Bridge | Custom Bridge |
-|---|---|---|
 | Created by | Docker | User/Compose |
 | Name-based DNS | Limited | Supported |
 | IP communication | Yes | Yes |
 | Recommended for app stacks | No | Yes |
 
----
-
 # Docker Hub Commands
 
 | Command | Use |
-|---|---|
 | `docker login` | Login to Docker Hub |
 | `docker tag app:v1 username/app:v1` | Tag image |
 | `docker push username/app:v1` | Push image |
 | `docker pull username/app:v1` | Pull image |
 | `docker logout` | Logout |
 
----
-
 # Quick Debug Commands
 
 | Problem | Command |
-|---|---|
 | Container not running | `docker ps -a` |
 | App error | `docker logs container_name` |
 | Compose app error | `docker compose logs service_name` |
@@ -334,8 +287,6 @@ ENTRYPOINT ["echo"]
 | Env issue in Compose | `docker compose config` |
 | Disk full | `docker system df` |
 | Healthcheck issue | `docker inspect container --format '{{json .State.Health}}'` |
-
----
 
 # Job-Ready Golden Rules
 
@@ -350,7 +301,6 @@ ENTRYPOINT ["echo"]
 9. Do not put secrets inside images.
 10. Tag and push images properly to Docker Hub.
 
-
 day-37-revision.md
 # Day 37 – Docker Revision & Self-Check
 
@@ -361,8 +311,6 @@ Day 37 is a revision day.
 The goal is to consolidate everything learned from Days 29–36 so Docker becomes practical and job-ready.
 
 Covered topics:
-
-```text
 Day 29: Docker basics
 Day 30: Images and container lifecycle
 Day 31: Dockerfile
@@ -371,20 +319,13 @@ Day 33: Docker Compose basics
 Day 34: Advanced Compose
 Day 35: Multi-stage builds and Docker Hub
 Day 36: Full Docker project
-```
-
----
 
 # Self-Assessment Checklist
 
 Mark each item honestly:
-
-```text
 can do
 shaky
 haven't done
-```
-
 | Skill | Status | Notes |
 |---|---|---|
 | Run a container from Docker Hub | can do | `docker run hello-world`, `docker run nginx` |
@@ -413,8 +354,6 @@ haven't done
 | Use healthchecks | can do | `pg_isready`, `redis-cli ping` |
 | Use `depends_on` with health condition | can do | `condition: service_healthy` |
 
----
-
 # Weak Spots to Revisit
 
 Pick 2 topics you feel shaky about.
@@ -424,47 +363,31 @@ Suggested weak topics:
 ## Weak Spot 1: Docker Hub Push Flow
 
 Redo:
-
-```bash
 docker login
 docker tag local-image:v1 username/repo:v1
 docker push username/repo:v1
 docker pull username/repo:v1
-```
 
 Checklist:
-
-```text
 Can login
 Can tag correctly
 Can push
 Can see image on Docker Hub
 Can remove local image
 Can pull and run again
-```
-
----
 
 ## Weak Spot 2: Multi-Stage Builds
 
 Redo:
-
-```bash
 docker build -f Dockerfile.single -t app-single:v1 .
 docker build -f Dockerfile.multistage -t app-multi:v1 .
 docker images
-```
 
 Checklist:
-
-```text
 Can explain builder stage
 Can explain runtime stage
 Can compare size
 Can explain why multi-stage is smaller
-```
-
----
 
 # Quick-Fire Questions and Answers
 
@@ -476,70 +399,48 @@ A container is a running or stopped instance of an image.
 
 Simple:
 
-```text
 Image = blueprint
 Container = running instance
-```
 
 Example:
-
-```bash
 docker pull nginx
 docker run nginx
-```
-
 `nginx` image is used to create an Nginx container.
 
----
 
 ## Q2. What happens to data inside a container when you remove it?
 
 Data stored inside the container writable layer is deleted when the container is removed.
 
 If data must persist, use:
-
-```text
 Named volume
 Bind mount
 External database/storage
-```
-
 Example:
-
-```bash
 docker run -v mysql-data:/var/lib/mysql mysql:8.0
-```
-
----
 
 ## Q3. How do two containers on the same custom network communicate?
 
 They communicate using container name or service name as DNS name.
 
 Example:
-
-```bash
 docker network create my-net
 docker run -d --name app --network my-net alpine sleep 1000
 docker run -d --name db --network my-net alpine sleep 1000
 docker exec app ping db
-```
 
 In Compose:
 
-```yaml
+# yaml
 WORDPRESS_DB_HOST: db:3306
-```
 
 Here `db` is the service name.
 
----
 
 ## Q4. What does `docker compose down -v` do differently from `docker compose down`?
 
 `docker compose down` removes:
 
-```text
 containers
 default network
 ```
