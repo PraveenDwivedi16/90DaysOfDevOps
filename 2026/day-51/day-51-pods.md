@@ -1,11 +1,25 @@
 Day 51 – Kubernetes Pods & Manifests
 
-1. What is a Kubernetes Manifest?
+# What is a Pod?
+
+A Pod is the smallest deployable unit in Kubernetes.
+
+A Pod can contain:
+- One container
+- Multiple containers
+
+Kubernetes does not directly manage containers. It manages Pods.
+
+Example:
+Pod
+ └── nginx container
+
+# What is a Kubernetes Manifest?
 A Kubernetes manifest is a YAML file that defines the desired state of a resource.
 
 Kubernetes reads this file and ensures the system matches the defined configuration.
 
-2. Anatomy of a Kubernetes Manifest
+# Anatomy of a Kubernetes Manifest
 Every manifest contains four main fields:
 
 1. apiVersion
@@ -40,7 +54,8 @@ spec:
 
 3. Pod Manifests
 
-# Nginx Pod
+# Task:1 Nginx Pod 
+
 apiVersion: v1
 kind: Pod
 metadata:
@@ -54,7 +69,29 @@ spec:
     ports:
     - containerPort: 80
 
-# BusyBox Pod
+### Commands Used
+Create Pod:
+kubectl apply -f nginx-pod.yaml
+
+# Verify Pod:
+kubectl get pods
+kubectl get pods -o wide
+
+# Check Details:
+kubectl describe pod nginx-pod
+
+# View Logs:
+kubectl logs nginx-pod
+
+# Access Container:
+kubectl exec -it nginx-pod -- /bin/bash
+
+# Verify Nginx:
+curl localhost:80
+Result:
+Successfully accessed the Nginx welcome page.
+
+# task:-2 BusyBox Pod
 apiVersion: v1
 kind: Pod
 metadata:
@@ -67,6 +104,20 @@ spec:
   - name: busybox
     image: busybox:latest
     command: ["sh", "-c", "echo Hello from BusyBox && sleep 3600"]
+
+### Commands Used
+kubectl apply -f busybox-pod.yaml
+kubectl get pods
+kubectl logs busybox-pod
+
+# Result:
+Hello from BusyBox
+
+### Learning
+BusyBox does not run continuously by default.
+Without command:
+- Container exits immediately
+- Pod goes into CrashLoopBackOff
 
 # Multi Label Pod
 apiVersion: v1
@@ -82,7 +133,7 @@ spec:
   - name: nginx
     image: nginx
 
-4. Imperative vs Declarative
+# Task:-3 Imperative vs Declarative
 
 # Imperative
 Direct command-based approach.
@@ -102,6 +153,39 @@ kubectl apply -f pod.yaml
 Reusable
 Version controlled
 Best for production
+
+# Generate YAML using Dry Run
+kubectl run test-pod --image=nginx --dry-run=client -o yaml
+
+This generates YAML without creating a Pod.
+
+# Task 4 – Validate Before Applying
+
+## Client-side validation
+
+kubectl apply -f pod.yaml --dry-run=client
+Checks YAML syntax.
+
+## Server-side validation
+kubectl apply -f pod.yaml --dry-run=server
+
+
+Validates against Kubernetes API.
+
+# Task 5 – Labels and Filtering
+# Show labels:
+kubectl get pods --show-labels
+
+# Filter by label:
+kubectl get pods -l app=nginx
+kubectl get pods -l environment=dev
+
+# Add label:
+kubectl label pod nginx-pod environment=production
+
+# Remove label:
+kubectl label pod nginx-pod environment-
+
 
 # Key Commands Used
 kubectl get pods
@@ -128,49 +212,6 @@ There is no controller managing it
 
 This is why Deployments are used in production.
 
-# YAML FILES
-1:- nginx-pod.yml
-
-apiVersion: v1
-kind: Pod
-metadata:
-  name: nginx-pod
-  labels:
-    app: nginx
-spec:
-  containers:
-  - name: nginx
-    image: nginx:latest
-    ports:
-    - containerPort: 80
-
-2:- busybox-pod.yml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: busybox-pod
-  labels:
-    app: busybox
-    environment: dev
-spec:
-  containers:
-  - name: busybox
-    image: busybox:latest
-    command: ["sh", "-c", "echo Hello from BusyBox && sleep 3600"]
-
-3:- multi-label-pod.yml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: multi-label-pod
-  labels:
-    app: myapp
-    environment: staging
-    team: devops
-spec:
-  containers:
-  - name: nginx
-    image: nginx
 
 
 # Day 51 – Kubernetes Pods & Manifests (Interview Q/A + Important Points)

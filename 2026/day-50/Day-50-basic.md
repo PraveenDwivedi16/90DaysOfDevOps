@@ -122,15 +122,14 @@ C:\Users\<your-user>\.kube\config
 
 1. What is Kubernetes?
 Answer:
-
-Kubernetes is an open-source container orchestration platform used to automate deployment, scaling, networking, and management of containerized applications.
+Kubernetes is an open-source container orchestration platform used to automate deployment, scaling, networking, 
+and management of containerized applications.
 
 Simple:
 👉 Docker run container 
 👉 Kubernetes manage containers
 
 2. Why do we need Kubernetes if Docker already exists?
-
 Answer:
 Docker only runs containers, but Kubernetes manages containers at scale.
 
@@ -145,7 +144,6 @@ Kubernetes solves these problems.
 3. Who created Kubernetes?
 Answer:
 Kubernetes was originally developed by Google and inspired by Google's internal system called Borg.
-
 It is written in Go language.
 
 4. What is the meaning of Kubernetes?
@@ -362,3 +360,4 @@ What happens when pod crashes?
 What is etcd?
 What is kind/minikube?
 What happens when you run kubectl apply?
+c
