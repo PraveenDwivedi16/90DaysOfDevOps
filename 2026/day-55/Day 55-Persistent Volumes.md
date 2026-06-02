@@ -1,41 +1,106 @@
-Day 55 - Persistent Volumes (PV) and Persistent Volume Claims (PVC)
-Objective
-Learn why containers need persistent storage and how Kubernetes provides it using:
-Persistent Volumes (PV)
-Persistent Volume Claims (PVC)
-StorageClasses
-Static Provisioning
-Dynamic Provisioning
----
-Why Containers Need Persistent Storage
-Containers are ephemeral.
-Example:
-```text
+Day-55 Persistent Volumes (PV) and Persistent Volume Claims
+Part-1: Storage Fundamentals + Task-1 + Task-2
+Chapter 1: Why Do We Need Storage?
+
+Before learning PV and PVC, first understand the problem.
+
+Suppose you have a Pod:
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  containers:
+  - name: app
+    image: nginx
+
+Pod starts.
+
+Now enter inside Pod:
+
+kubectl exec -it my-pod -- sh
+
+Create a file:
+
+echo "Hello Kubernetes" > test.txt
+
+Check:
+
+cat test.txt
+
+Output:
+
+Hello Kubernetes
+
+Everything looks fine.
+
+Now delete Pod:
+
+kubectl delete pod my-pod
+
+Create Pod again.
+
+Enter Pod:
+
+kubectl exec -it my-pod -- sh
+
+Check file:
+
+cat test.txt
+
+Output:
+
+No such file or directory
+
+File disappeared.
+
+Why Did Data Disappear?
+
+Because container storage is:
+
+Ephemeral Storage
+
+Meaning:
+
+Temporary Storage
+
+Lifecycle:
+
+Pod Created
+     ↓
+Container Created
+     ↓
+Data Written
+     ↓
 Pod Deleted
-    ↓
+     ↓
 Container Deleted
-    ↓
+     ↓
 Data Deleted
-```
-This is a problem for:
-MySQL
-PostgreSQL
-MongoDB
-Redis persistence
-Business applications
-Solution:
-```text
-Pod
- ↓
-PVC
- ↓
-PV
- ↓
-Storage
-```
----
+Real World Problem
+
+Imagine:
+
+MySQL Database
+
+contains:
+
+100000 Customers
+
+Pod crashes.
+
+Data gone.
+
+Company gone 😂
+
+That's why Kubernetes provides:
+
+Persistent Storage
 Kubernetes Storage Architecture
-```text
+
+Remember this forever:
+
 Application
      │
      ▼
@@ -48,72 +113,121 @@ Application
      PV
      │
      ▼
- Actual Storage
-```
----
-Important Volume Types
-emptyDir
-Temporary storage.
-```yaml
+ Physical Storage
+Chapter 2: Volume Types in Kubernetes
+
+Before PV/PVC, know important volume types.
+
+1. emptyDir
+
+Most basic volume.
+
+Example:
+
 volumes:
 - name: temp-storage
   emptyDir: {}
-```
+
 Behavior:
-```text
-Pod Delete
+
+Pod Start
    ↓
-Data Delete
-```
+Volume Created
+   ↓
+Data Written
+   ↓
+Pod Deleted
+   ↓
+Volume Deleted
+   ↓
+Data Lost
+
 Use Cases:
+
 Cache
-Temporary files
-Scratch space
----
-hostPath
-Mounts a folder from the Kubernetes node.
-```yaml
+Temporary Files
+Build Artifacts
+2. hostPath
+
+Mounts a folder from node.
+
+Example:
+
 hostPath:
-  path: /tmp/k8s-pv-data
-```
-Good for learning.
+  path: /tmp/data
+
+Behavior:
+
+Node Folder
+     │
+     ▼
+Container
+
+Use Cases:
+
+Learning
+Testing
+Labs
+
 Not recommended in production.
----
-ConfigMap Volume
-Used to mount configuration files.
-Examples:
+
+3. ConfigMap Volume
+
+Used for configuration files.
+
+Example:
+
 nginx.conf
 application.properties
----
-Secret Volume
-Used to mount:
+4. Secret Volume
+
+Used for:
+
 Passwords
 API Keys
-Tokens
 Certificates
----
-NFS Volume
+Tokens
+5. NFS Volume
+
 Shared storage.
+
 Supports:
-```text
+
 RWX
 (ReadWriteMany)
-```
----
-CSI Volumes
+6. CSI Storage
+
 Production storage.
+
 Examples:
+
 AWS EBS
 Azure Disk
-GCP Persistent Disk
+GCP PD
 Longhorn
 Ceph
----
-Task 1 - Data Loss Demonstration
-Goal
-Show that emptyDir loses data after Pod recreation.
-Manifest
-```yaml
+Chapter 3: Task-1 Data Loss Demonstration
+
+Goal:
+
+Prove:
+
+Pod Delete
+     ↓
+Data Delete
+Task-1 Architecture
+Pod
+ │
+ ▼
+emptyDir
+Task-1 YAML
+
+File:
+
+vi ephemeral-pod.yaml
+
+Paste:
+
 apiVersion: v1
 kind: Pod
 
@@ -142,75 +256,267 @@ spec:
   volumes:
   - name: temp-storage
     emptyDir: {}
-```
-volumes vs volumeMounts
+Line-by-Line YAML Explanation
+apiVersion
+apiVersion: v1
+
+Using Kubernetes core API.
+
+kind
+kind: Pod
+
+Create Pod.
+
+metadata
+metadata:
+  name: ephemeral-pod
+
+Pod name.
+
+image
+image: busybox
+
+Lightweight Linux image.
+
+Used for testing.
+
+command
+command:
+
+Runs automatically after container starts.
+
+date Command
+date >> /data/message.txt
+
+Appends timestamp.
+
+Example:
+
+Tue Jun 2 10:00:00 UTC 2026
+volumeMounts
+volumeMounts:
+
+Mount storage inside container.
+
+mountPath
+mountPath: /data
+
+Storage becomes available at:
+
+/data
 volumes
+volumes:
+
+Defines storage.
+
+emptyDir
+emptyDir: {}
+
+Temporary storage.
+
+Deleted with Pod.
+
+Important Concept
+
+Many beginners confuse:
+
+volumeMounts
+
+and
+
+volumes
+volumes
+
 Creates storage.
-```yaml
+
+Example:
+
 volumes:
 - name: temp-storage
   emptyDir: {}
-```
+
+Meaning:
+
+Create Storage
 volumeMounts
-Attaches storage inside container.
-```yaml
+
+Attaches storage.
+
+Example:
+
 volumeMounts:
 - name: temp-storage
   mountPath: /data
-```
-Flow:
-```text
+
+Meaning:
+
+Attach Storage
+
+Diagram:
+
 temp-storage
       │
       ▼
     /data
-```
-Result:
-```text
-Pod Delete
-   ↓
-emptyDir Delete
-   ↓
-Data Lost
-```
----
-Persistent Volume (PV)
-Definition
-PV = Actual Storage
-Cluster-wide resource.
+Task-1 Commands
+
+Apply:
+
+kubectl apply -f ephemeral-pod.yaml
+
+Check:
+
+kubectl get pods
+
+Expected:
+
+ephemeral-pod Running
+
+Check file:
+
+kubectl exec -it ephemeral-pod -- cat /data/message.txt
+
 Example:
-```text
+
+Tue Jun 2 10:00:00 UTC 2026
+
+Delete Pod:
+
+kubectl delete pod ephemeral-pod
+
+Recreate:
+
+kubectl apply -f ephemeral-pod.yaml
+
+Check file again:
+
+kubectl exec -it ephemeral-pod -- cat /data/message.txt
+
+Example:
+
+Tue Jun 2 10:15:00 UTC 2026
+
+Old timestamp missing.
+
+Verification
+
+Question:
+
+Is timestamp same?
+
+Answer:
+
+No
+
+Why?
+
+emptyDir deleted with Pod
+Learning From Task-1
+
+Remember:
+
+emptyDir
+
+means:
+
+Temporary Storage
+
+and
+
+Pod Delete
+    ↓
+Data Delete
+Chapter 4: Persistent Volume (PV)
+
+Now we solve the problem.
+
+What is Persistent Volume?
+
+Definition:
+
+Persistent Volume = Actual Storage
+
+Simple:
+
+PV = Disk
+
+Examples:
+
 1Gi
 10Gi
 100Gi
-```
+PV Characteristics
+
+PV is:
+
+Cluster Wide Resource
+
+Not namespaced.
+
 Check:
-```bash
+
 kubectl get pv
-```
----
 PV Lifecycle
-```text
 Available
-   ↓
+    ↓
 Bound
-   ↓
+    ↓
 Released
-```
 Available
+
+PV exists.
+
 No PVC attached.
+
 Bound
-PVC attached.
+
+PV attached to PVC.
+
 Released
-PVC deleted but PV still exists.
----
-Task 2 - Create a PV
-Create directory:
-```bash
+
+PVC deleted.
+
+PV still exists.
+
+Task-2 Create Persistent Volume
+
+Goal:
+
+Create:
+
+1Gi Persistent Storage
+Step-1 Create Host Directory
+
+Command:
+
 mkdir -p /tmp/k8s-pv-data
-```
-PV Manifest:
-```yaml
+
+Verify:
+
+ls -ld /tmp/k8s-pv-data
+
+Expected:
+
+drwxr-xr-x ...
+Why This Folder?
+
+This folder becomes actual storage.
+
+Diagram:
+
+/tmp/k8s-pv-data
+        ▲
+        │
+        │
+        PV
+Step-2 Create PV
+
+File:
+
+vi pv.yaml
+
+Paste:
+
 apiVersion: v1
 kind: PersistentVolume
 
@@ -228,83 +534,282 @@ spec:
 
   hostPath:
     path: /tmp/k8s-pv-data
-```
-Verify:
-```bash
-kubectl get pv
-kubectl describe pv manual-pv
-```
-Expected:
-```text
-STATUS = Available
-```
----
-Access Modes
-ReadWriteOnce (RWO)
-One node can read and write.
-Most common.
-Used by:
-MySQL
-PostgreSQL
-MongoDB
----
-ReadOnlyMany (ROX)
-Many nodes can read.
-Read-only.
----
-ReadWriteMany (RWX)
-Many nodes can read and write.
-Used by:
-NFS
-Shared storage
----
-Reclaim Policies
+Deep YAML Explanation
+metadata.name
+name: manual-pv
+
+PV name.
+
+capacity
+capacity:
+  storage: 1Gi
+
+Storage size.
+
+Meaning:
+
+1 Gigabyte
+accessModes
+accessModes:
+- ReadWriteOnce
+
+Meaning:
+
+One Node
+Read + Write
+persistentVolumeReclaimPolicy
 Retain
-```yaml
-persistentVolumeReclaimPolicy: Retain
-```
-Behavior:
-```text
-PVC Delete
-   ↓
-PV Released
-   ↓
-Data Safe
-```
-Use For:
-Databases
-Critical business data
----
-Delete
-```yaml
-persistentVolumeReclaimPolicy: Delete
-```
-Behavior:
-```text
-PVC Delete
-   ↓
-PV Delete
-   ↓
+
+Meaning:
+
+PVC Deleted
+     ↓
+Keep Data
+hostPath
+hostPath:
+  path: /tmp/k8s-pv-data
+
+Actual storage location.
+
+Apply PV
+kubectl apply -f pv.yaml
+
+Expected:
+
+persistentvolume/manual-pv created
+Verification
+
+Check:
+
+kubectl get pv
+
+Expected:
+
+manual-pv   1Gi   RWO   Retain   Available
+
+Describe:
+
+kubectl describe pv manual-pv
+
+Observe:
+
+Capacity
+Access Modes
+Reclaim Policy
+Status
+Host Path
+Why STATUS = Available?
+
+Because:
+
+PV Created
+
+But:
+
+PVC Not Created Yet
+
+Diagram:
+
+manual-pv
+
+Available
+
+Waiting For PVC
+Task-2 Learning Summary
+
+PV means:
+
+Actual Storage
+
+Current State:
+
+Folder Created
+     ↓
+PV Created
+     ↓
+Waiting For PVC
+Part-1 Revision Sheet
+
+Task-1:
+
+emptyDir
+
+Result:
+
+Pod Delete
+     ↓
 Data Delete
-```
-Use For:
-Testing
-Temporary environments
----
-Recycle (Deprecated)
-Old reclaim policy.
-No longer recommended.
----
-Persistent Volume Claim (PVC)
-Definition
-PVC = Request for Storage
+
+Task-2:
+
+Persistent Volume
+
+Result:
+
+PV Created
+     ↓
+Available
+Interview Questions
+What is emptyDir?
+
+Temporary storage deleted with Pod.
+
+Difference between volumes and volumeMounts?
+
+volumes:
+Creates storage.
+
+volumeMounts:
+Attaches storage.
+
+What is PV?
+
+Actual storage resource.
+
+Why is PV status Available?
+
+Because no PVC is attached.
+
+Q:- What is hostPath?
+Node directory mounted as storage.
+
+Q:- What is Retain policy?
+Keep PV and data after PVC deletion.
+
+Chapter 5 - Persistent Volume Claim (PVC)
+
+Task-2 me humne PV banaya tha.
+
+Current Architecture:
+
+/tmp/k8s-pv-data
+        ▲
+        │
+        │
+     manual-pv
+
+Ab problem ye hai:
+
+Pod
+
+direct:
+
+PV
+
+use nahi kar sakta.
+
+Why Pod Cannot Directly Use PV?
+
+New learners ka common question:
+
+PV already hai
+
+To Pod direct use kyu nahi kar sakta?
+
+Good Question.
+
+Wrong Architecture
+Pod
+ │
+ ▼
+PV
+
+Kubernetes allow nahi karta.
+
+Correct Architecture
+Pod
+ │
+ ▼
+PVC
+ │
+ ▼
+PV
+ │
+ ▼
+Storage
+Real World Example
+
+Hotel Example
+
+PV:
+
+Room 101
+1Gi
+
+Already available.
+
+Developer:
+
+Mujhe Storage Chahiye
+
+PVC creates request.
+
 Example:
-```text
+
+Need 500Mi
+
+Kubernetes compares:
+
+PV
+
+with
+
+PVC
+
+If matched:
+
+Bound
+What is PVC?
+
+Definition:
+
+PVC = Storage Request
+
+Simple:
+
+PV = Storage
+
+PVC = Storage Request
+
+Remember forever.
+
+Why PVC Exists?
+
+Without PVC:
+
+Application must know:
+
+Storage Type
+Storage Location
+Storage Details
+
+Bad design.
+
+With PVC:
+
+Application only says:
+
 Need 500Mi Storage
-```
----
-Task 3 - Create PVC
-```yaml
+
+Kubernetes handles rest.
+
+Task-3 Create PVC
+
+Goal:
+
+Create PVC.
+
+Bind with:
+
+manual-pv
+PVC YAML
+
+File:
+
+vi pvc.yaml
+
+Paste:
+
 apiVersion: v1
 kind: PersistentVolumeClaim
 
@@ -320,46 +825,273 @@ spec:
   resources:
     requests:
       storage: 500Mi
-```
-Why storageClassName: "" ?
-```text
-Disable Dynamic Provisioning
-Use existing PV only
-```
-Verify:
-```bash
-kubectl get pvc
-kubectl get pv
-```
-Expected:
-```text
-PVC = Bound
-PV  = Bound
-```
----
-How Binding Works
+Deep YAML Explanation
+apiVersion
+apiVersion: v1
+
+Core Kubernetes API.
+
+kind
+kind: PersistentVolumeClaim
+
+Create PVC.
+
+metadata
+metadata:
+  name: my-pvc
+
+PVC name.
+
+storageClassName
+storageClassName: ""
+
+Very Important.
+
+Meaning:
+
+Do NOT use Dynamic Provisioning
+
+Use only existing PV.
+
+Why We Added This?
+
+Remember?
+
+Initially PVC was:
+
+Pending
+
+Reason:
+
+StorageClass = standard
+
+But PV:
+
+StorageClass = empty
+
+Mismatch.
+
+Adding:
+
+storageClassName: ""
+
+forces PVC to use static provisioning.
+
+accessModes
+accessModes:
+- ReadWriteOnce
+
+Must match PV.
+
 PV:
-```text
-1Gi
+
 RWO
-```
+
 PVC:
-```text
-500Mi
+
 RWO
-```
-Matching:
-```text
+
+Match.
+
+requests.storage
+storage: 500Mi
+
+Meaning:
+
+Need 500Mi Storage
+PVC Binding Algorithm
+
+Very Important Interview Topic.
+
+Kubernetes checks:
+
+Check 1 Capacity
+
+PV:
+
+1Gi
+
+PVC:
+
+500Mi
+
+Check:
+
 1Gi >= 500Mi
-RWO = RWO
-```
+
+PASS
+
+Check 2 Access Mode
+
+PV:
+
+RWO
+
+PVC:
+
+RWO
+
+PASS
+
+Check 3 StorageClass
+
+PV:
+
+empty
+
+PVC:
+
+empty
+
+PASS
+
 Result:
-```text
+
 Bound
-```
----
-Task 4 - Use PVC Inside Pod
-```yaml
+Apply PVC
+kubectl apply -f pvc.yaml
+
+Expected:
+
+persistentvolumeclaim/my-pvc created
+Verify PVC
+kubectl get pvc
+
+Expected:
+
+NAME     STATUS   VOLUME
+my-pvc   Bound    manual-pv
+Verify PV
+kubectl get pv
+
+Expected:
+
+manual-pv Bound
+Explain Output
+
+Example:
+
+my-pvc   Bound   manual-pv
+
+Meaning:
+
+PVC Attached To manual-pv
+CLAIM Column
+
+Example:
+
+manual-pv
+CLAIM:
+default/my-pvc
+
+Meaning:
+
+manual-pv is attached to my-pvc
+Common PVC Pending Reasons
+
+Interview Favorite Question.
+
+Reason 1
+
+StorageClass mismatch.
+
+Reason 2
+
+Access Mode mismatch.
+
+Example:
+
+PV:
+
+RWO
+
+PVC:
+
+RWX
+
+Result:
+
+Pending
+Reason 3
+
+Capacity mismatch.
+
+PV:
+
+1Gi
+
+PVC:
+
+2Gi
+
+Result:
+
+Pending
+Reason 4
+
+No PV available.
+
+Result:
+
+Pending
+Task-3 Learning Summary
+
+Current Architecture:
+
+PVC
+ │
+ ▼
+PV
+ │
+ ▼
+Storage
+
+Current Status:
+
+PVC Bound
+PV Bound
+Chapter 6 - Task-4 Use PVC in Pod
+
+Now actual magic begins.
+
+Until now:
+
+PV Created
+PVC Created
+
+But no Pod using storage.
+
+Goal
+
+Prove:
+
+Pod Delete
+
+does NOT mean
+
+Data Delete
+Architecture
+Pod
+ │
+ ▼
+PVC
+ │
+ ▼
+PV
+ │
+ ▼
+hostPath
+ │
+ ▼
+/tmp/k8s-pv-data
+Pod YAML
+
+File:
+
+vi persistent-pod.yaml
+
+Paste:
+
 apiVersion: v1
 kind: Pod
 
@@ -386,123 +1118,627 @@ spec:
   - name: data-volume
     persistentVolumeClaim:
       claimName: my-pvc
-```
-Architecture:
-```text
+Deep YAML Explanation
+claimName
+claimName: my-pvc
+
+Meaning:
+
+Use PVC named my-pvc
+persistentVolumeClaim
+persistentVolumeClaim:
+
+Means:
+
+Mount PVC Storage
+Complete Flow
+
+When Pod starts:
+
 Pod
  │
  ▼
-PVC
+Uses my-pvc
  │
  ▼
-PV
+my-pvc uses manual-pv
  │
  ▼
-Storage
-```
-Result:
-```text
-Pod Delete
-   ↓
-Data Safe
-```
----
-KIND Cluster Important Note
-In KIND:
-```text
-hostPath
-```
-Exists inside node container.
-Not directly on host machine.
+manual-pv uses hostPath
+ │
+ ▼
+/tmp/k8s-pv-data
+Apply Pod
+kubectl apply -f persistent-pod.yaml
+
+Expected:
+
+pod/persistent-pod created
+Verify Pod
+kubectl get pods
+
+Expected:
+
+persistent-pod Running
+Check Data
+kubectl exec -it persistent-pod -- cat /data/message.txt
+
 Example:
-```bash
+
+Pod Started at Tue Jun 2 ...
+Important Discovery You Made
+
+You checked:
+
+ls /tmp/k8s-pv-data
+
+Nothing visible.
+
+Why?
+
+Because you are using:
+
+KIND Cluster
+KIND Architecture
+
+Very Important.
+
+Your node is actually:
+
+Docker Container
+
+Not actual Linux machine.
+
+Real Architecture
+Ubuntu Server
+      │
+      ▼
+Docker
+      │
+      ▼
+Kind Node Container
+      │
+      ▼
+/tmp/k8s-pv-data
+Verify Actual Data Location
+
+Check Pod Node:
+
+kubectl get pod persistent-pod -o wide
+
+Example:
+
+NODE:
+praveen-cluster-worker
+
+Enter Node Container:
+
 docker exec -it praveen-cluster-worker bash
-```
-Then:
-```bash
+
+Check:
+
 cat /tmp/k8s-pv-data/message.txt
-```
----
+
+Output:
+
+Pod Started at Tue Jun 2 ...
+Persistence Test
+
+Delete Pod:
+
+kubectl delete pod persistent-pod
+
+Recreate:
+
+kubectl apply -f persistent-pod.yaml
+
+Check File Again
+
+kubectl exec -it persistent-pod -- cat /data/message.txt
+
+Expected:
+
+Pod Started at First Time
+Pod Started at Second Time
+Why Two Lines?
+
+Because:
+
+First Pod wrote:
+
+Line 1
+
+Second Pod wrote:
+
+Line 2
+
+Storage survived.
+
+Compare Task-1 vs Task-4
+Task-1
+emptyDir
+
+Result:
+
+Pod Delete
+ ↓
+Data Delete
+Task-4
+PVC
+ ↓
+PV
+
+Result:
+
+Pod Delete
+ ↓
+Data Safe
+Task-4 Learning Summary
+
+You proved:
+
+Persistent Storage Works
+
+Flow:
+
+Pod
+ ↓
+PVC
+ ↓
+PV
+ ↓
+hostPath
+
+Data survives Pod deletion.
+
+Part-2 Revision Sheet
+
+PVC:
+
+Storage Request
+
+PV:
+
+Actual Storage
+
+Binding Requirements:
+
+StorageClass Match
+AccessMode Match
+Capacity Match
+
+Task-3 Result:
+
+PVC Bound
+PV Bound
+
+Task-4 Result:
+
+Pod Delete
+ ↓
+Data Safe
+Interview Questions
+What is PVC?
+
+Storage request made by application.
+
+Why PVC required?
+
+Provides abstraction between application and storage.
+
+Can Pod directly use PV?
+
+No.
+
+Correct architecture:
+
+Pod
+ ↓
+PVC
+ ↓
+PV
+Why was PVC Pending initially?
+
+StorageClass mismatch.
+
+How does PV-PVC binding happen?
+
+Using:
+
+Capacity
+Access Mode
 StorageClass
-Definition
-StorageClass = Storage Blueprint / Template
-Defines:
+
+matching.
+
+Why did data survive in Task-4?
+
+Because data was stored in PV, not inside container filesystem.
+
+Why was hostPath not visible on Ubuntu host?
+
+Because KIND nodes run inside Docker containers.
+
+What is StorageClass?
+
+Simple Definition:
+
+StorageClass = Storage Blueprint
+
+ya
+
+Storage Template
+Real World Example
+
+Hotel Example
+
+Developer:
+
+Mujhe Room Chahiye
+
+PVC:
+
+Need Storage
+
+Storage Team:
+
+Kaunsa Room?
+
+Standard
+Premium
+Luxury
+
+StorageClass exactly ye information store karti hai.
+
+StorageClass Responsibilities
+
+StorageClass define karti hai:
+
+1. Provisioner
+2. Reclaim Policy
+3. Volume Binding Mode
+4. Expansion Rules
+Check StorageClass
+
+Command:
+
+kubectl get storageclass
+
+Your Output:
+
+standard (default)
+
+Describe:
+
+kubectl describe storageclass standard
+
+Output:
+
+Provisioner:
+rancher.io/local-path
+
+ReclaimPolicy:
+Delete
+
+VolumeBindingMode:
+WaitForFirstConsumer
+StorageClass YAML (Concept Only)
+
+Example:
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+
+metadata:
+  name: standard
+
+provisioner: rancher.io/local-path
+
+reclaimPolicy: Delete
+
+volumeBindingMode: WaitForFirstConsumer
+Deep YAML Explanation
+kind
+kind: StorageClass
+
+Create StorageClass.
+
+metadata.name
+name: standard
+
+StorageClass name.
+
+Used inside PVC.
+
+Example:
+
+storageClassName: standard
+provisioner
+provisioner: rancher.io/local-path
+
+Most important field.
+
+reclaimPolicy
+Delete
+
+Delete storage when PVC deleted.
+
+volumeBindingMode
+WaitForFirstConsumer
+
+Wait until Pod created.
+
+Provisioner Deep Dive
+
+Most Important Concept.
+
+What is Provisioner?
+
+Provisioner is a plugin.
+
+Responsible for:
+
+Creating Storage
+Creating PV
+Managing Storage
+Real World Example
+
+Developer:
+
+Need 500Mi Storage
+
+PVC created.
+
+PVC cannot create storage itself.
+
+StorageClass calls:
+
+Provisioner
+
+Provisioner creates storage.
+
+Examples of Provisioners
+
+AWS:
+
+ebs.csi.aws.com
+
+Creates:
+
+AWS EBS Volume
+
+Azure:
+
+disk.csi.azure.com
+
+Creates:
+
+Azure Managed Disk
+
+GCP:
+
+pd.csi.storage.gke.io
+
+Creates:
+
+Persistent Disk
+
+Your Cluster:
+
+rancher.io/local-path
+
+Creates:
+
+Local Node Storage
+Provisioner Workflow
+PVC Created
+     │
+     ▼
+StorageClass
+     │
+     ▼
+Provisioner
+     │
+     ▼
+PV Created
+
+Remember this.
+
+Interview favorite.
+
+Reclaim Policy Deep Dive
+
+Your StorageClass:
+
+Delete
+What Happens?
+
+PVC Deleted
+
+↓
+
+PV Deleted
+
+↓
+
+Storage Deleted
+
+Diagram:
+
+PVC Delete
+     │
+     ▼
+PV Delete
+     │
+     ▼
+Data Delete
+Compare with Manual PV
+
+Manual PV:
+
+Retain
+
+Behavior:
+
+PVC Delete
+     │
+     ▼
+PV Released
+     │
+     ▼
+Data Safe
+Reclaim Policies Summary
+Retain
+
+Keep data.
+
+Best for:
+
+Databases
+Critical Data
+Delete
+
+Delete everything.
+
+Best for:
+
+Testing
+Temporary Environments
+Recycle
+
+Deprecated.
+
+No longer used.
+
+Interview only.
+
+WaitForFirstConsumer Deep Dive
+
+This confused many learners.
+
+You saw:
+
+waiting for first consumer
+
+inside PVC events.
+
+What is Consumer?
+
+Consumer means:
+
+Pod
+Deployment
+StatefulSet
+DaemonSet
+
+Anything using PVC.
+
+Why Wait?
+
+Imagine:
+
+worker-1
+worker-2
+worker-3
+
+PVC created.
+
+Kubernetes doesn't know:
+
+Which node will run Pod
+
+If PV created too early:
+
+Wrong Node
+
+may be selected.
+
+Therefore:
+
+WaitForFirstConsumer
+
+means:
+
+Wait for Pod
+Then create volume
+Workflow
+PVC Created
+     │
+     ▼
+Pending
+     │
+     ▼
+Pod Created
+     │
+     ▼
+Node Selected
+     │
+     ▼
+PV Created
+     │
+     ▼
+PVC Bound
+Task-5 Learning Summary
+
+StorageClass contains:
+
 Provisioner
 Reclaim Policy
-Volume Binding Mode
-Expansion Rules
----
-Your StorageClass
-```text
-standard (default)
-```
+Binding Mode
+
+Your StorageClass:
+
+standard
+
 Provisioner:
-```text
+
 rancher.io/local-path
-```
+
 Reclaim Policy:
-```text
+
 Delete
-```
-VolumeBindingMode:
-```text
+
+Binding Mode:
+
 WaitForFirstConsumer
-```
----
-Provisioner
-Provisioner is a storage plugin.
-Creates storage automatically.
-Examples:
-AWS:
-```text
-ebs.csi.aws.com
-```
-Azure:
-```text
-disk.csi.azure.com
-```
-Rancher:
-```text
-rancher.io/local-path
-```
----
-WaitForFirstConsumer
-Meaning:
-```text
-Do not create PV immediately.
-Wait for Pod scheduling first.
-```
-Flow:
-```text
-PVC Created
-     ↓
-Wait
-     ↓
-Pod Created
-     ↓
-PV Created
-```
----
+Chapter 8 - Dynamic Provisioning
+
+Now we will remove manual PV creation.
+
 Static Provisioning
-Admin creates PV.
-Developer creates PVC.
-```text
+
+Admin:
+
+Creates PV
+
+Developer:
+
+Creates PVC
+
+Architecture:
+
 Admin
  │
  ▼
- PV
+PV
  │
  ▼
 PVC
  │
  ▼
 Pod
-```
----
 Dynamic Provisioning
-Developer creates PVC only.
-StorageClass creates PV automatically.
-```text
+
+Developer:
+
+Creates PVC
+
+StorageClass:
+
+Creates PV Automatically
+
+Architecture:
+
 PVC
  │
  ▼
@@ -513,11 +1749,17 @@ Provisioner
  │
  ▼
 PV
-```
----
-Task 6 - Dynamic Provisioning
-PVC:
-```yaml
+ │
+ ▼
+Pod
+Task-6 Create Dynamic PVC
+
+File:
+
+vi dynamic-pvc.yaml
+
+Paste:
+
 apiVersion: v1
 kind: PersistentVolumeClaim
 
@@ -533,9 +1775,57 @@ spec:
   resources:
     requests:
       storage: 200Mi
-```
-Pod:
-```yaml
+YAML Explanation
+storageClassName
+storageClassName: standard
+
+Meaning:
+
+Use StorageClass standard
+accessModes
+ReadWriteOnce
+
+One node read/write.
+
+requests.storage
+200Mi
+
+Need 200Mi storage.
+
+Apply PVC
+kubectl apply -f dynamic-pvc.yaml
+Check PVC
+kubectl get pvc
+
+Initially:
+
+Pending
+
+Why?
+
+Because:
+
+WaitForFirstConsumer
+Verify Events
+kubectl describe pvc dynamic-pvc
+
+Output:
+
+waiting for first consumer
+Why PVC Pending?
+
+No Pod using PVC yet.
+
+Consumer missing.
+
+Create Dynamic Pod
+
+File:
+
+vi dynamic-pod.yaml
+
+Paste:
+
 apiVersion: v1
 kind: Pod
 
@@ -562,110 +1852,783 @@ spec:
   - name: dynamic-storage
     persistentVolumeClaim:
       claimName: dynamic-pvc
-```
-Result:
-```text
-PVC Created
-   ↓
-PV Auto Created
-```
----
+YAML Explanation
+claimName
+claimName: dynamic-pvc
+
+Use dynamic-pvc.
+
+mountPath
+/data
+
+Storage available at:
+
+/data
+Apply Pod
+kubectl apply -f dynamic-pod.yaml
+What Happens Internally?
+
+Step-1
+
+Pod Created
+
+Step-2
+
+Consumer Found
+
+Step-3
+
+StorageClass Activated
+
+Step-4
+
+Provisioner Runs
+
+Step-5
+
+PV Created Automatically
+
+Step-6
+
+PVC Bound
+
+Step-7
+
+Pod Running
+Verify
+
+Check PVC:
+
+kubectl get pvc
+
+Expected:
+
+dynamic-pvc Bound
+
+Check PV:
+
+kubectl get pv
+
+Expected:
+
+pvc-xxxxxxxx
+
+Auto-created PV.
+
+Why Strange Name?
+
+Manual PV:
+
+manual-pv
+
+You named it.
+
+Dynamic PV:
+
+pvc-001159ed...
+
+Kubernetes generated name.
+
+Verify Data
+kubectl exec -it dynamic-pod -- cat /data/test.txt
+
+Example:
+
+Dynamic PV Test Tue Jun 2 ...
 Static vs Dynamic Provisioning
 Feature	Static	Dynamic
 PV Creation	Manual	Automatic
 Admin Work	High	Low
 StorageClass	Optional	Required
+Provisioner	Not Needed	Needed
 Scaling	Difficult	Easy
-Production	Less Common	Common
----
-Task 7 - Cleanup
-Delete Pods:
-```bash
+Production Usage	Rare	Common
+Task-6 Learning Summary
+
+You proved:
+
+PVC
+ ↓
+StorageClass
+ ↓
+Provisioner
+ ↓
+PV Auto Created
+Part-3 Revision Sheet
+
+StorageClass:
+
+Storage Blueprint
+
+Provisioner:
+
+Storage Plugin
+
+WaitForFirstConsumer:
+
+Wait For Pod
+Then Create Volume
+
+Dynamic Provisioning:
+
+PVC
+ ↓
+PV Auto Created
+Interview Questions
+What is StorageClass?
+
+Storage blueprint used for dynamic provisioning.
+
+What is Provisioner?
+
+Plugin that creates storage automatically.
+
+Why was dynamic-pvc Pending?
+
+WaitForFirstConsumer.
+
+No Pod existed yet.
+
+What is Consumer?
+
+Pod, Deployment, StatefulSet or DaemonSet using PVC.
+
+Difference between Static and Dynamic Provisioning?
+
+Static:
+
+Admin creates PV.
+
+Dynamic:
+
+StorageClass creates PV automatically.
+
+Why did dynamic PV have a random name?
+
+Because Kubernetes generated it automatically.
+
+What was your default StorageClass?
+standard
+What was the provisioner?
+rancher.io/local-path
+What was the reclaim policy?
+Delete
+What was the volume binding mode?
+WaitForFirstConsumer
+
+Step-1 Delete Pods
+
+Commands:
+
 kubectl delete pod persistent-pod
 kubectl delete pod dynamic-pod
-```
-Delete PVCs:
-```bash
+
+Verify:
+
+kubectl get pods
+
+Expected:
+
+No resources found
+Why Delete Pods First?
+
+Because:
+
+Pod
+
+is currently using:
+
+PVC
+
+Good practice:
+
+Delete Consumers First
+
+Then:
+
+Delete Storage
+Step-2 Delete PVCs
+
+Commands:
+
 kubectl delete pvc my-pvc
 kubectl delete pvc dynamic-pvc
-```
-Check PVs:
-```bash
-kubectl get pv
-```
-Expected:
-Manual PV:
-```text
-Released
-```
-Dynamic PV:
-```text
-Deleted Automatically
-```
----
-Common PVC Pending Reasons
-StorageClass mismatch
-Capacity mismatch
-AccessMode mismatch
-No matching PV
-WaitForFirstConsumer
----
-Production Recommendations
-Avoid:
-hostPath
-Prefer:
-AWS EBS
-Azure Disk
-GCP PD
-Longhorn
-Ceph
-NFS
----
-Interview Questions and Answers
-What is PV?
-Actual storage resource in Kubernetes.
----
-What is PVC?
-Storage request made by applications.
----
-Difference between PV and PVC?
-PV = Storage
-PVC = Request for Storage
----
-What is StorageClass?
-Template used for dynamic provisioning.
----
-What is Provisioner?
-Plugin that creates storage automatically.
----
-What is RWO?
-One node can read and write.
----
-What is RWX?
-Many nodes can read and write.
----
-What is ROX?
-Many nodes can read only.
----
-What is Retain Policy?
-Keep PV and data after PVC deletion.
----
-What is Delete Policy?
-Delete PV and data after PVC deletion.
----
-What is WaitForFirstConsumer?
-Wait until Pod is scheduled before creating/binding volume.
----
-Why was PVC Pending in the lab?
-StorageClass mismatch and later WaitForFirstConsumer behavior.
----
-Why use PVC instead of directly using PV?
-PVC decouples applications from storage implementation.
----
-Why is hostPath not recommended in production?
-Data is tied to a single node.
 
-What are PV States?
+Expected:
+
+persistentvolumeclaim "my-pvc" deleted
+persistentvolumeclaim "dynamic-pvc" deleted
+Step-3 Observe PVs
+
+Command:
+
+kubectl get pv
+Expected Result
+
+Manual PV:
+
+manual-pv
+Released
+
+Dynamic PV:
+
+Deleted Automatically
+
+May not appear at all.
+
+Why Manual PV Survived?
+
+Because:
+
+persistentVolumeReclaimPolicy: Retain
+
+Behavior:
+
+PVC Deleted
+     ↓
+PV Remains
+     ↓
+Data Remains
+Why Dynamic PV Disappeared?
+
+StorageClass:
+
+ReclaimPolicy: Delete
+
+Behavior:
+
+PVC Deleted
+     ↓
+PV Deleted
+     ↓
+Storage Deleted
+Visual Comparison
+Retain
+PVC Deleted
+     │
+     ▼
+PV Released
+     │
+     ▼
+Data Safe
+Delete
+PVC Deleted
+     │
+     ▼
+PV Deleted
+     │
+     ▼
+Data Deleted
+Step-4 Delete Remaining PV
+
+Command:
+
+kubectl delete pv manual-pv
+
+Verify:
+
+kubectl get pv
+
+Expected:
+
+No resources found
+Important PV States
+Available
+
+Meaning:
+
+PV Exists
+No PVC Attached
+
+Example:
+
+manual-pv
 Available
 Bound
+
+Meaning:
+
+PV Attached To PVC
+
+Example:
+
+manual-pv
+Bound
 Released
+
+Meaning:
+
+PVC Deleted
+PV Still Exists
+
+Example:
+
+manual-pv
+Released
+Failed
+
+Rare state.
+
+Something went wrong during provisioning.
+
+Chapter 10 - Most Common Storage Problems
+
+Very Important for Interviews.
+
+Problem-1 PVC Pending
+
+Command:
+
+kubectl get pvc
+
+Output:
+
+Pending
+Cause-1 StorageClass Mismatch
+
+PV:
+
+StorageClass=""
+
+PVC:
+
+StorageClass=standard
+
+Result:
+
+Pending
+Cause-2 Capacity Mismatch
+
+PV:
+
+1Gi
+
+PVC:
+
+2Gi
+
+Result:
+
+Pending
+Cause-3 Access Mode Mismatch
+
+PV:
+
+RWO
+
+PVC:
+
+RWX
+
+Result:
+
+Pending
+Cause-4 No Matching PV
+
+No suitable PV exists.
+
+Result:
+
+Pending
+Cause-5 WaitForFirstConsumer
+
+PVC exists.
+
+Pod does not exist.
+
+Result:
+
+Pending
+Troubleshooting Command
+
+Always run:
+
+kubectl describe pvc <pvc-name>
+
+Example:
+
+kubectl describe pvc dynamic-pvc
+Problem-2 Pod Stuck Pending
+
+Check:
+
+kubectl describe pod <pod-name>
+
+Look at:
+
+Events Section
+Problem-3 Data Not Visible
+
+Check:
+
+kubectl exec -it pod-name -- ls /data
+
+Check mount:
+
+kubectl describe pod pod-name
+Chapter 11 - Production Notes
+Why hostPath is Bad for Production?
+
+Example:
+
+worker-1
+
+contains:
+
+/tmp/k8s-pv-data
+
+Pod moves to:
+
+worker-2
+
+Data unavailable.
+
+Production Storage Options
+
+AWS:
+
+EBS
+EFS
+
+Azure:
+
+Azure Disk
+Azure Files
+
+GCP:
+
+Persistent Disk
+Filestore
+
+On-Premise:
+
+NFS
+Ceph
+Longhorn
+OpenEBS
+Why Databases Usually Use Retain?
+
+Imagine:
+
+Production PostgreSQL
+
+PVC accidentally deleted.
+
+With:
+
+Delete
+
+Everything lost.
+
+With:
+
+Retain
+
+Storage survives.
+
+Recovery possible.
+
+Stateful Applications
+
+Common Examples:
+
+MySQL
+PostgreSQL
+MongoDB
+Elasticsearch
+Redis
+Kafka
+
+All need persistent storage.
+
+Chapter 12 - Static vs Dynamic Provisioning
+Static Provisioning
+
+Admin creates PV.
+
+Developer creates PVC.
+
+Architecture:
+
+Admin
+ │
+ ▼
+PV
+ │
+ ▼
+PVC
+ │
+ ▼
+Pod
+
+Advantages:
+
+Simple
+Full Control
+
+Disadvantages:
+
+Manual Work
+Not Scalable
+Dynamic Provisioning
+
+Developer creates PVC.
+
+StorageClass creates PV automatically.
+
+Architecture:
+
+PVC
+ │
+ ▼
+StorageClass
+ │
+ ▼
+Provisioner
+ │
+ ▼
+PV
+
+Advantages:
+
+Automatic
+Scalable
+Production Friendly
+
+Disadvantages:
+
+Requires StorageClass
+Requires Provisioner
+Complete Flow Revision
+Task-1
+Pod
+ ↓
+emptyDir
+
+Result:
+
+Pod Delete
+ ↓
+Data Delete
+Task-2
+Create PV
+
+Result:
+
+Available
+Task-3
+Create PVC
+
+Result:
+
+Bound
+Task-4
+Pod
+ ↓
+PVC
+ ↓
+PV
+
+Result:
+
+Data Survives
+Task-5
+
+Learned:
+
+StorageClass
+Provisioner
+WaitForFirstConsumer
+Task-6
+
+Learned:
+
+Dynamic Provisioning
+
+Result:
+
+PVC
+ ↓
+PV Auto Created
+Task-7
+
+Learned:
+
+Retain
+vs
+Delete
+30 Detailed Interview Questions & Answers
+1. What is a Volume?
+
+Storage attached to a Pod.
+
+2. What is emptyDir?
+
+Temporary volume deleted with Pod.
+
+3. What is hostPath?
+
+Node directory mounted into Pod.
+
+4. What is PV?
+
+Cluster-wide storage resource.
+
+5. What is PVC?
+
+Storage request made by application.
+
+6. Difference between PV and PVC?
+
+PV = Actual storage.
+
+PVC = Request for storage.
+
+7. Why PVC required?
+
+Provides abstraction between application and storage.
+
+8. Can Pod directly use PV?
+
+No.
+
+Must use PVC.
+
+9. What is StorageClass?
+
+Storage blueprint used for dynamic provisioning.
+
+10. What is Provisioner?
+
+Plugin that creates storage automatically.
+
+11. What is Dynamic Provisioning?
+
+Automatic PV creation using StorageClass.
+
+12. What is Static Provisioning?
+
+Manual PV creation by admin.
+
+13. What is RWO?
+
+ReadWriteOnce.
+
+One node read/write.
+
+14. What is ROX?
+
+ReadOnlyMany.
+
+Many nodes read-only.
+
+15. What is RWX?
+
+ReadWriteMany.
+
+Many nodes read/write.
+
+16. What is Retain?
+
+Keep PV and data after PVC deletion.
+
+17. What is Delete?
+
+Delete PV and data after PVC deletion.
+
+18. What is Recycle?
+
+Deprecated reclaim policy.
+
+19. What is WaitForFirstConsumer?
+
+Wait for Pod scheduling before volume provisioning.
+
+20. Why was dynamic PVC Pending?
+
+No consumer existed yet.
+
+21. What is Consumer?
+
+Pod/Deployment/StatefulSet using PVC.
+
+22. Why was PVC Pending in Task-3?
+
+StorageClass mismatch.
+
+23. What causes PVC Pending?
+
+Capacity mismatch, access mode mismatch, StorageClass mismatch.
+
+24. What are PV States?
+
+Available, Bound, Released.
+
+25. Why use Retain for databases?
+
+Protects data from accidental deletion.
+
+26. Why avoid hostPath in production?
+
+Node-dependent storage.
+
+27. What happens if Pod restarts with PVC?
+
+Data survives.
+
+28. What happens if Pod restarts with emptyDir?
+
+Data lost.
+
+29. What is the default StorageClass in your cluster?
+standard
+30. What provisioner did your cluster use?
+rancher.io/local-path
+Final Revision Sheet (Read Before Interview)
+
+Remember:
+
+PV = Actual Storage
+PVC = Storage Request
+StorageClass = Storage Blueprint
+Provisioner = Storage Plugin
+emptyDir
+
+Result:
+
+Pod Delete
+ ↓
+Data Delete
+PVC + PV
+
+Result:
+
+Pod Delete
+ ↓
+Data Safe
+
+PV Lifecycle:
+
+Available
+   ↓
+Bound
+   ↓
+Released
+
+Dynamic Provisioning:
+
+PVC
+ ↓
+StorageClass
+ ↓
+Provisioner
+ ↓
+PV
+
+Reclaim Policies:
+
+Retain = Keep Data
+
+Delete = Remove Data
+
+
