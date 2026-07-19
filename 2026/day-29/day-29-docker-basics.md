@@ -426,7 +426,7 @@ Docker performs the following workflow:
 # Interview Questions and Answers
 
 ## 1. What is Docker?
-Docker is an open-source platform that packages applications and their dependencies into lightweight containers for consistent deployment across different environments.
+Docker is an open-source containerization platform that allows developers to build, package, distribute, and run applications inside lightweight containers.
 
 ## 2. What is a Docker Container?
 A Docker Container is a lightweight isolated runtime environment created from a Docker Image.
